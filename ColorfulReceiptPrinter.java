@@ -1,5 +1,7 @@
 import java.awt.*;
-import java.awt.print.*;
+import java.awt.print.PageFormat;
+import java.awt.print.Printable;
+import java.awt.print.PrinterException;
 import java.util.List;
 
 public class ColorfulReceiptPrinter implements Printable {
@@ -20,7 +22,7 @@ public class ColorfulReceiptPrinter implements Printable {
 
         int y = 20;
         g2d.setFont(new Font("Monospaced", Font.BOLD, 16));
-        g2d.setColor(new Color(30, 144, 255)); // Blue
+        g2d.setColor(new Color(30, 144, 255));
         g2d.drawString("==== PIZZA RECEIPT ====", 100, y);
 
         g2d.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -29,12 +31,14 @@ public class ColorfulReceiptPrinter implements Printable {
 
         for (Pizza pizza : pizzas) {
             g2d.setColor(Color.BLACK);
-            g2d.drawString("#" + count++ + " " + pizza.getSize() + " Pizza - Base: $" + String.format("%.2f", pizza.getBasePrice()), 50, y);
+            g2d.drawString("#" + count++ + " " + pizza.getSize() + " Pizza - Base: $" +
+                    String.format("%.2f", pizza.getBasePrice()), 50, y);
             y += 15;
 
             for (Topping topping : pizza.getToppings()) {
-                g2d.setColor(new Color(34, 139, 34)); // Green
-                g2d.drawString("   + " + topping + " $" + String.format("%.2f", topping.getPrice()), 70, y);
+                g2d.setColor(new Color(34, 139, 34));
+                g2d.drawString("   + " + topping.getName() + " $" +
+                        String.format("%.2f", topping.getPrice()), 70, y);
                 y += 15;
             }
 

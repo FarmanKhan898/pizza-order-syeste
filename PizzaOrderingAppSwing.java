@@ -3,19 +3,14 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
+import java.util.List;
 import java.util.Objects;
 
 public class PizzaOrderingAppSwing {
     private final Order order = new Order();
     private final JTextArea orderSummaryArea = new JTextArea(15, 25);
-    private PizzaSize selectedSize = PizzaSize.MEDIUM;
+    private Pizza.Size selectedSize = Pizza.Size.MEDIUM;
 
-    private int headlineX = 0;
-    private int headlineDirection = 1;
-    private Color headlineColor = new Color(30, 144, 255);
-
-    // Pizza Details UI Components
-    private final JPanel pizzaDetailsPanel = new JPanel();
     private final JLabel pizzaIconLabel = new JLabel();
     private final JLabel pizzaNameLabel = new JLabel();
     private final JLabel pizzaSizeLabel = new JLabel();
@@ -23,290 +18,280 @@ public class PizzaOrderingAppSwing {
     private final JLabel pizzaPriceLabel = new JLabel();
     private final JTextArea pizzaDescriptionArea = new JTextArea();
 
-    public PizzaOrderingAppSwing() {
-        JFrame frame = new JFrame("🍕 Pizza Ordering System");
+    private final JTextField customerNameField = new JTextField(20);
+    private final JTextField phoneField = new JTextField(15);
+    private final JTextArea addressField = new JTextArea(3, 20);
+
+    private final String loggedInUser;
+
+    public static void launchWithUser(String userName) {
+        SwingUtilities.invokeLater(() -> new PizzaOrderingAppSwing(userName));
+    }
+
+    public PizzaOrderingAppSwing(String userName) {
+        this.loggedInUser = userName;
+
+        JFrame frame = new JFrame("\uD83C\uDF55 Pizza Ordering System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(1000, 700);
+        frame.setUndecorated(true);
 
-        // === Animated Headline ===
-        JPanel headlinePanel = new JPanel() {
+        JPanel backgroundPanel = new JPanel(new BorderLayout()) {
+            @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gradient = new GradientPaint(0, 0, Color.ORANGE, getWidth(), 0, Color.RED);
-                g2d.setPaint(gradient);
+                GradientPaint gp = new GradientPaint(0, 0, new Color(255, 240, 200), 0, getHeight(), new Color(255, 180, 120));
+                g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
-
-                g.setFont(new Font("Verdana", Font.BOLD, 32));
-                g.setColor(Color.WHITE);
-                FontMetrics fm = g.getFontMetrics();
-                String text = "WELCOME TO FARMAN FAST FOOD ONLINE SHOP";
-                int y = (getHeight() + fm.getAscent()) / 2 - 5;
-                g.drawString(text, headlineX, y);
             }
         };
-        headlinePanel.setPreferredSize(new Dimension(850, 75));
 
-        Timer timer = new Timer(30, e -> {
-            headlineX += headlineDirection * 4;
-            if (headlineX > headlinePanel.getWidth() - 300) {
-                headlineDirection = -1;
-            } else if (headlineX < 0) {
-                headlineDirection = 1;
-            }
-            headlinePanel.repaint();
-        });
-        timer.start();
+        backgroundPanel.setBorder(BorderFactory.createLineBorder(new Color(255, 102, 51), 3));
 
-        // === Left Panel: Ordering ===
+        JLabel welcomeLabel = new JLabel("\uD83D\uDC64 Logged in as: " + loggedInUser);
+        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        welcomeLabel.setForeground(new Color(80, 40, 0));
+        welcomeLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 0));
+        backgroundPanel.add(welcomeLabel, BorderLayout.NORTH);
+
         JPanel leftPanel = new JPanel();
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-        leftPanel.setBorder(BorderFactory.createTitledBorder("🍕 Pizza Customization"));
-        leftPanel.setBackground(new Color(245, 255, 250));
-
-        leftPanel.add(createLabel("PLEASE SELECT PIZZA SIZE:"));
-        JPanel pizzaSelectionPanel = new JPanel(new GridLayout(1, 3, 10, 10));
-        pizzaSelectionPanel.setBackground(new Color(245, 255, 250));
+        leftPanel.setBackground(new Color(255, 245, 230));
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Select Pizza Size"));
         ButtonGroup sizeGroup = new ButtonGroup();
+        JPanel pizzaSizePanel = new JPanel(new GridLayout(1, 3));
 
-        for (PizzaSize size : PizzaSize.values()) {
-            ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(switch (size) {
-                case SMALL -> "small_pizza.png";
-                case MEDIUM -> "medium_pizza.png";
-                case LARGE -> "large_pizza.png";
-            })));
-            Image img = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+        for (Pizza.Size size : Pizza.Size.values()) {
+            String imagePath = "images/" + size.name().toLowerCase() + "_pizza.png";
+            ImageIcon icon = loadImageIcon(imagePath);
+            Image scaled = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+
             JRadioButton radio = new JRadioButton(size.name());
+            radio.setSelected(size == Pizza.Size.MEDIUM);
             radio.setBackground(Color.WHITE);
-            radio.setSelected(size == PizzaSize.MEDIUM);
             radio.addActionListener(e -> {
                 selectedSize = size;
                 updatePizzaDetails(size);
             });
 
-            sizeGroup.add(radio);
             JPanel panel = new JPanel();
             panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
             panel.setBackground(Color.WHITE);
-            JLabel picLabel = new JLabel(new ImageIcon(img));
-            picLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            JLabel imageLabel = new JLabel(new ImageIcon(scaled));
+            imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             radio.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            picLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-                public void mouseClicked(java.awt.event.MouseEvent evt) {
-                    radio.setSelected(true);
-                    selectedSize = size;
-                    updatePizzaDetails(size);
-                }
-            });
-
-            panel.add(picLabel);
+            panel.add(imageLabel);
             panel.add(radio);
-            pizzaSelectionPanel.add(panel);
+            pizzaSizePanel.add(panel);
+            sizeGroup.add(radio);
         }
 
-        leftPanel.add(Box.createVerticalStrut(10));
-        leftPanel.add(pizzaSelectionPanel);
-        leftPanel.add(Box.createVerticalStrut(10));
+        leftPanel.add(pizzaSizePanel);
 
-        // === Pizza Details Panel ===
-        pizzaDetailsPanel.setLayout(new BorderLayout(10, 10));
-        pizzaDetailsPanel.setBorder(BorderFactory.createTitledBorder("Pizza Details"));
-        pizzaDetailsPanel.setBackground(new Color(255, 250, 240));
-        pizzaDetailsPanel.setPreferredSize(new Dimension(300, 180));
-
-        pizzaIconLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        pizzaDetailsPanel.add(pizzaIconLabel, BorderLayout.WEST);
-
-        JPanel infoPanel = new JPanel();
-        infoPanel.setBackground(new Color(255, 250, 240));
-        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
-
-        pizzaNameLabel.setFont(new Font("Verdana", Font.BOLD, 18));
-        pizzaNameLabel.setForeground(new Color(178, 34, 34));
-        infoPanel.add(pizzaNameLabel);
-        infoPanel.add(pizzaSizeLabel);
-        infoPanel.add(pizzaServingLabel);
-        infoPanel.add(pizzaPriceLabel);
+        JPanel detailPanel = new JPanel(new BorderLayout());
+        detailPanel.setBackground(new Color(255, 245, 230));
+        detailPanel.setBorder(BorderFactory.createTitledBorder("Pizza Details"));
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setBackground(new Color(255, 245, 230));
+        textPanel.add(pizzaNameLabel);
+        textPanel.add(pizzaSizeLabel);
+        textPanel.add(pizzaServingLabel);
+        textPanel.add(pizzaPriceLabel);
 
         pizzaDescriptionArea.setEditable(false);
         pizzaDescriptionArea.setLineWrap(true);
         pizzaDescriptionArea.setWrapStyleWord(true);
-        pizzaDescriptionArea.setBackground(new Color(255, 250, 240));
-        pizzaDescriptionArea.setFont(new Font("Serif", Font.ITALIC, 13));
-        pizzaDescriptionArea.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
-        infoPanel.add(pizzaDescriptionArea);
+        pizzaDescriptionArea.setBackground(new Color(255, 245, 230));
 
-        pizzaDetailsPanel.add(infoPanel, BorderLayout.CENTER);
-        leftPanel.add(pizzaDetailsPanel);
+        detailPanel.add(pizzaIconLabel, BorderLayout.WEST);
+        detailPanel.add(textPanel, BorderLayout.CENTER);
+        detailPanel.add(pizzaDescriptionArea, BorderLayout.SOUTH);
 
-        // === Toppings ===
-        JCheckBox cheese = createStyledCheckbox("Cheese ($1.0)");
-        JCheckBox pepperoni = createStyledCheckbox("Pepperoni ($1.5)");
-        JCheckBox mushrooms = createStyledCheckbox("Mushrooms ($1.0)");
-        JCheckBox olives = createStyledCheckbox("Olives ($1.2)");
-        JCheckBox onions = createStyledCheckbox("Onions ($0.8)");
-        JCheckBox extraSauce = createStyledCheckbox("Extra Sauce ($0.5)");
+        JCheckBox cheese = new JCheckBox("Cheese ($1.0)");
+        JCheckBox olives = new JCheckBox("Olives ($1.2)");
+        JCheckBox mushrooms = new JCheckBox("Mushrooms ($1.0)");
+        JCheckBox pepperoni = new JCheckBox("Pepperoni ($1.5)");
 
-        JPanel toppingsPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JPanel toppingsPanel = new JPanel(new GridLayout(2, 2));
+        toppingsPanel.setBackground(new Color(255, 245, 230));
         toppingsPanel.setBorder(BorderFactory.createTitledBorder("Toppings"));
-        toppingsPanel.setBackground(new Color(255, 248, 220));
         toppingsPanel.add(cheese);
-        toppingsPanel.add(pepperoni);
-        toppingsPanel.add(mushrooms);
         toppingsPanel.add(olives);
-        toppingsPanel.add(onions);
-        toppingsPanel.add(extraSauce);
-        leftPanel.add(Box.createVerticalStrut(10));
-        leftPanel.add(toppingsPanel);
+        toppingsPanel.add(mushrooms);
+        toppingsPanel.add(pepperoni);
 
-        // === Right Panel: Summary ===
-        JPanel rightPanel = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(255, 255, 240), 0, getHeight(), new Color(230, 230, 210));
-                g2d.setPaint(gp);
-                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-            }
-        };
-        rightPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(10, 10, 10, 10),
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(139, 69, 19), 2, true),
-                        "🧾 Order Summary", 0, 0, new Font("Serif", Font.BOLD, 18), new Color(139, 69, 19))
-        ));
-        rightPanel.setOpaque(false);
-
+        JPanel summaryPanel = new JPanel(new BorderLayout());
+        summaryPanel.setBackground(new Color(255, 245, 230));
+        summaryPanel.setBorder(BorderFactory.createTitledBorder("Order Summary"));
         orderSummaryArea.setEditable(false);
-        orderSummaryArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        orderSummaryArea.setBackground(new Color(255, 255, 240));
-        orderSummaryArea.setBorder(BorderFactory.createLineBorder(new Color(210, 180, 140), 1));
-        JScrollPane scrollPane = new JScrollPane(orderSummaryArea);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        rightPanel.add(scrollPane, BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(orderSummaryArea);
+        summaryPanel.add(scroll, BorderLayout.CENTER);
 
+        JPanel customerPanel = new JPanel(new GridLayout(3, 2));
+        customerPanel.setBackground(new Color(255, 245, 230));
+        customerPanel.setBorder(BorderFactory.createTitledBorder("Customer Info"));
+        customerPanel.add(new JLabel("Name:"));
+        customerPanel.add(customerNameField);
+        customerPanel.add(new JLabel("Phone:"));
+        customerPanel.add(phoneField);
+        customerPanel.add(new JLabel("Address:"));
+        customerPanel.add(new JScrollPane(addressField));
+        summaryPanel.add(customerPanel, BorderLayout.NORTH);
 
-        // === Buttons ===
-        JButton addPizzaBtn = new JButton("➕ Add Pizza");
-        JButton printBtn = new JButton("🖨️ Print Receipt");
-        styleButton(addPizzaBtn);
-        styleButton(printBtn);
+        JButton addBtn = new JButton("Add Pizza");
+        JButton printBtn = new JButton("Print Receipt");
+        JButton saveBtn = new JButton("Place Order");
+        JButton viewOrdersBtn = new JButton("View All Orders");
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(Color.WHITE);
-        buttonPanel.add(addPizzaBtn);
-        buttonPanel.add(printBtn);
+        JButton[] buttons = { addBtn, printBtn, saveBtn, viewOrdersBtn };
+        for (JButton btn : buttons) {
+            btn.setBackground(new Color(255, 102, 51));
+            btn.setForeground(Color.WHITE);
+            btn.setFocusPainted(false);
+        }
 
-        addPizzaBtn.addActionListener((ActionEvent e) -> {
-            Pizza pizza = new Pizza(selectedSize);
+        addBtn.addActionListener((ActionEvent e) -> {
+            Pizza pizza = new Pizza(selectedSize, getBasePrice(selectedSize));
             if (cheese.isSelected()) pizza.addTopping(new Topping("Cheese", 1.0));
-            if (pepperoni.isSelected()) pizza.addTopping(new Topping("Pepperoni", 1.5));
-            if (mushrooms.isSelected()) pizza.addTopping(new Topping("Mushrooms", 1.0));
             if (olives.isSelected()) pizza.addTopping(new Topping("Olives", 1.2));
-            if (onions.isSelected()) pizza.addTopping(new Topping("Onions", 0.8));
-            if (extraSauce.isSelected()) pizza.addTopping(new Topping("Extra Sauce", 0.5));
+            if (mushrooms.isSelected()) pizza.addTopping(new Topping("Mushrooms", 1.0));
+            if (pepperoni.isSelected()) pizza.addTopping(new Topping("Pepperoni", 1.5));
 
             order.addPizza(pizza);
             orderSummaryArea.setText(order.generateReceipt());
 
             cheese.setSelected(false);
-            pepperoni.setSelected(false);
-            mushrooms.setSelected(false);
             olives.setSelected(false);
-            onions.setSelected(false);
-            extraSauce.setSelected(false);
+            mushrooms.setSelected(false);
+            pepperoni.setSelected(false);
         });
 
-        printBtn.addActionListener((ActionEvent e) -> {
+        saveBtn.addActionListener(e -> {
+            String name = customerNameField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String addr = addressField.getText().trim();
+
+            if (name.isEmpty() || phone.isEmpty() || addr.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Please fill all customer fields.");
+                return;
+            }
+
+            // ✅ Name should only contain letters and spaces
+            if (!name.matches("[a-zA-Z ]+")) {
+                JOptionPane.showMessageDialog(null, "Name must contain only letters.");
+                return;
+            }
+
+            // ✅ Phone should be only digits and 10 to 13 characters
+            if (!phone.matches("\\d{10,13}")) {
+                JOptionPane.showMessageDialog(null, "Phone must contain only digits (10 to 13 digits).");
+                return;
+            }
+
+            if (order.getPizzas().isEmpty()) {
+                JOptionPane.showMessageDialog(null, "Add at least one pizza before placing order.");
+                return;
+            }
+
+            OrderDAO.saveOrder(order, name, phone, addr);
+            JOptionPane.showMessageDialog(null, "Order placed successfully!");
+        });
+
+        printBtn.addActionListener(e -> {
             PrinterJob job = PrinterJob.getPrinterJob();
+            job.setPrintable(new ColorfulReceiptPrinter(order.getPizzas(), order.calculateTotal()));
             if (job.printDialog()) {
                 try {
-                    orderSummaryArea.print();
+                    job.print();
                 } catch (PrinterException ex) {
                     ex.printStackTrace();
                 }
             }
         });
 
-        // === Layout ===
-        JPanel mainPanel = new JPanel(new BorderLayout(20, 20));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        mainPanel.setBackground(Color.WHITE);
+        viewOrdersBtn.addActionListener(e -> {
+            List<OrderRecord> records = OrderDAO.fetchAllOrders();
+            if (records.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "No orders found.");
+            } else {
+                StringBuilder result = new StringBuilder();
+                for (OrderRecord record : records) {
+                    result.append("Order #").append(record.getOrderId()).append("\n")
+                            .append("Customer: ").append(record.getCustomerName()).append("\n")
+                            .append("Phone: ").append(record.getPhone()).append("\n")
+                            .append("Address: ").append(record.getAddress()).append("\n")
+                            .append("Items: \n").append(record.getItems()).append("\n")
+                            .append("Total: $").append(String.format("%.2f", record.getTotal())).append("\n\n");
+                }
+                JTextArea area = new JTextArea(result.toString());
+                area.setEditable(false);
+                JScrollPane pane = new JScrollPane(area);
+                pane.setPreferredSize(new Dimension(500, 400));
+                JOptionPane.showMessageDialog(null, pane, "All Orders", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(255, 245, 230));
+        for (JButton btn : buttons) buttonPanel.add(btn);
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+        centerPanel.setBackground(new Color(255, 245, 230));
+        centerPanel.add(detailPanel);
+        centerPanel.add(toppingsPanel);
+        centerPanel.add(buttonPanel);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, summaryPanel);
         splitPane.setDividerLocation(600);
-        splitPane.setResizeWeight(0.7);
-        splitPane.setContinuousLayout(true);
-        splitPane.setOneTouchExpandable(true);
 
-        mainPanel.add(headlinePanel, BorderLayout.NORTH);
-        mainPanel.add(splitPane, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        frame.setContentPane(mainPanel);
-        frame.setSize(1000, 700);
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        backgroundPanel.add(splitPane, BorderLayout.CENTER);
+        backgroundPanel.add(centerPanel, BorderLayout.SOUTH);
 
         updatePizzaDetails(selectedSize);
+        frame.setContentPane(backgroundPanel);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
     }
 
-    private void updatePizzaDetails(PizzaSize size) {
-        ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(switch (size) {
-            case SMALL -> "small_pizza.png";
-            case MEDIUM -> "medium_pizza.png";
-            case LARGE -> "large_pizza.png";
-        })));
+    private double getBasePrice(Pizza.Size size) {
+        return switch (size) {
+            case SMALL -> 5.0;
+            case MEDIUM -> 7.5;
+            case LARGE -> 10.0;
+        };
+    }
+
+    private void updatePizzaDetails(Pizza.Size size) {
+        pizzaNameLabel.setText(size.name() + " Pizza");
+        pizzaSizeLabel.setText("Size: " + (size == Pizza.Size.SMALL ? "8\"" : size == Pizza.Size.MEDIUM ? "12\"" : "16\""));
+        pizzaServingLabel.setText("Serves: " + (size == Pizza.Size.SMALL ? "1-2" : size == Pizza.Size.MEDIUM ? "2-3" : "3-5"));
+        pizzaPriceLabel.setText("Base Price: $" + getBasePrice(size));
+
+        pizzaDescriptionArea.setText(switch (size) {
+            case SMALL -> "Perfect for individuals.";
+            case MEDIUM -> "Ideal for couples or small families.";
+            case LARGE -> "Great for groups and parties!";
+        });
+
+        String path = "images/" + size.name().toLowerCase() + "_pizza.png";
+        ImageIcon icon = loadImageIcon(path);
         Image img = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
         pizzaIconLabel.setIcon(new ImageIcon(img));
+    }
 
-        switch (size) {
-            case SMALL -> {
-                pizzaNameLabel.setText("Small Pizza");
-                pizzaSizeLabel.setText("Diameter: 8 inches");
-                pizzaServingLabel.setText("Serves: 1-2 people");
-                pizzaPriceLabel.setText("Base Price: $5.00");
-                pizzaDescriptionArea.setText("A perfect personal pizza, great for a quick snack or small appetite.");
-            }
-            case MEDIUM -> {
-                pizzaNameLabel.setText("Medium Pizza");
-                pizzaSizeLabel.setText("Diameter: 12 inches");
-                pizzaServingLabel.setText("Serves: 2-3 people");
-                pizzaPriceLabel.setText("Base Price: $7.50");
-                pizzaDescriptionArea.setText("Ideal for small families or groups. Balanced size with good value.");
-            }
-            case LARGE -> {
-                pizzaNameLabel.setText("Large Pizza");
-                pizzaSizeLabel.setText("Diameter: 16 inches");
-                pizzaServingLabel.setText("Serves: 3-5 people");
-                pizzaPriceLabel.setText("Base Price: $10.00");
-                pizzaDescriptionArea.setText("Great for parties or sharing. More toppings, more happiness!");
-            }
+    private ImageIcon loadImageIcon(String path) {
+        try {
+            return new ImageIcon(Objects.requireNonNull(getClass().getClassLoader().getResource(path)));
+        } catch (Exception e) {
+            System.err.println("⚠️ Image not found: " + path);
+            return new ImageIcon();
         }
     }
 
-    private JCheckBox createStyledCheckbox(String text) {
-        JCheckBox checkbox = new JCheckBox(text);
-        checkbox.setFont(new Font("Arial", Font.PLAIN, 13));
-        checkbox.setBackground(new Color(255, 248, 220));
-        return checkbox;
-    }
-
-    private JLabel createLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Arial", Font.BOLD, 15));
-        return label;
-    }
-
-    private void styleButton(JButton button) {
-        button.setFont(new Font("Arial", Font.BOLD, 14));
-        button.setBackground(new Color(173, 216, 230));
-        button.setForeground(Color.DARK_GRAY);
-        button.setFocusPainted(false);
-        button.setPreferredSize(new Dimension(140, 35));
-    }
-
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(PizzaOrderingAppSwing::new);
+        launchWithUser("TestUser");
     }
 }
